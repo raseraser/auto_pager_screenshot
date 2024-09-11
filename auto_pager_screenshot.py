@@ -10,6 +10,8 @@ import configparser
 import pyautogui
 import img2pdf
 
+VERSION="1.0.0"
+
 # 設置日誌
 logging.basicConfig(filename='auto_pager_screenshot.log', level=logging.INFO, 
                     format='%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S',
@@ -107,7 +109,7 @@ def merge_images_to_pdf(image_files, pdf_path):
     log_message(f"PDF 文件已生成: {pdf_path}")
 
 def main():
-    log_message("自動翻頁截圖工具啟動")
+    log_message(f"自動翻頁截圖工具啟動 v{VERSION}")
     log_message(f"將進行 {screenshot_count} 次截圖，儲存至 {save_directory}")
     log_message(f"翻頁操作: {next_page_action}")
     log_message(f"截圖模式: {'全螢幕' if screenshot_mode == 'full_screen' else '固定範圍'}")
