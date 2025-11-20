@@ -40,6 +40,8 @@
    pdf_output = output.pdf
    screenshot_mode = full_screen
    fixed_area = 0,0,1920,1080
+   image_format = PNG
+   image_quality = 95
    ```
 
 2. 運行腳本：
@@ -60,6 +62,8 @@
 - `pdf_output`: PDF 輸出檔案名稱，如果不需要生成 PDF 則留空
 - `screenshot_mode`: 截圖模式，可選值：full_screen（全螢幕）或 fixed_area（固定範圍）
 - `fixed_area`: 固定範圍截圖的座標和大小，格式：x,y,width,height（僅在 screenshot_mode 為 fixed_area 時使用）
+- `image_format`: 圖檔格式，支援 PNG 或 JPG。JPG 適合減少檔案大小，PNG 保留無損畫質。
+- `image_quality`: 當 `image_format` 為 JPG 時生效，介於 1–100，數值越大品質越好、檔案越大。
 
 ## 注意事項
 

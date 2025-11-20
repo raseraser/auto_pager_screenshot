@@ -40,12 +40,31 @@ try:
     pdf_output = config.get('Settings', 'pdf_output', fallback='')
     screenshot_mode = config.get('Settings', 'screenshot_mode', fallback='full_screen')
     fixed_area = config.get('Settings', 'fixed_area', fallback='0,0,1920,1080')
+    image_format = config.get('Settings', 'image_format', fallback='PNG').upper()
+    image_quality = config.getint('Settings', 'image_quality', fallback=95)
 
     # 解析固定範圍的座標和大小
     if screenshot_mode == 'fixed_area':
-        fixed_area = tuple(map(int, fixed_area.split(',')))
-        if len(fixed_area) != 4:
+        fixed_area_values = tuple(map(int, fixed_area.split(',')))
+        if len(fixed_area_values) != 4:
             raise ValueError("固定範圍格式錯誤，應為 'x,y,width,height'")
+        left, top, width, height = fixed_area_values
+        if width <= 0 or height <= 0:
+            raise ValueError("固定範圍的 width 與 height 必須為正值")
+        fixed_area = {
+            'left': left,
+            'top': top,
+            'width': width,
+            'height': height,
+        }
+
+    if image_format == 'JPG':
+        image_format = 'JPEG'
+    supported_formats = {'PNG', 'JPEG'}
+    if image_format not in supported_formats:
+        raise ValueError(f"不支援的圖檔格式: {image_format}，支援格式: {', '.join(sorted(supported_formats))}")
+    if not (1 <= image_quality <= 100):
+        raise ValueError("image_quality 必須介於 1 到 100 之間")
 
 except FileNotFoundError as e:
     log_message(f"錯誤: {str(e)}", logging.ERROR)
@@ -60,10 +79,14 @@ except FileNotFoundError as e:
     next_page_action = 'RIGHT'
     pdf_output = ''
     screenshot_mode = 'full_screen'
-    fixed_area = (0, 0, 1920, 1080)
+    fixed_area = {'left': 0, 'top': 0, 'width': 1920, 'height': 1080}
+    image_format = 'PNG'
+    image_quality = 95
 
 # 確保儲存目錄存在
 os.makedirs(save_directory, exist_ok=True)
+
+image_extension = 'jpg' if image_format == 'JPEG' else image_format.lower()
 
 def get_active_window():
     return win32gui.GetForegroundWindow()
@@ -94,14 +117,20 @@ def take_screenshot(number, hwnd):
             screenshot = sct.grab(fixed_area)
         
         img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
-        filename = f"{file_prefix}{number:03d}.png"
+        filename = f"{file_prefix}{number:03d}.{image_extension}"
         full_path = os.path.join(save_directory, filename)
-        img.save(full_path)
+        save_kwargs = {}
+        if image_format == 'JPEG':
+            save_kwargs['quality'] = image_quality
+            save_kwargs['optimize'] = True
+            save_kwargs['subsampling'] = 2
+        img.save(full_path, format=image_format, **save_kwargs)
         log_message(f"截圖已儲存: {full_path}")
 
     win32gui.SetForegroundWindow(hwnd)  # 確保目標窗口在前台
     send_next_page_command(hwnd)
     time.sleep(delay_between_screenshots)
+    return full_path
 
 def merge_images_to_pdf(image_files, pdf_path):
     with open(pdf_path, "wb") as f:
@@ -115,6 +144,8 @@ def main():
     log_message(f"截圖模式: {'全螢幕' if screenshot_mode == 'full_screen' else '固定範圍'}")
     if screenshot_mode == 'fixed_area':
         log_message(f"固定範圍: {fixed_area}")
+    quality_suffix = f", 品質: {image_quality}" if image_format == 'JPEG' else ''
+    log_message(f"圖檔格式: {image_format}{quality_suffix}")
     input("請確保目標窗口已打開並位於當前窗口之後，然後按下 Enter 鍵開始...")
 
     # 切換到目標窗口並獲取句柄
@@ -129,8 +160,8 @@ def main():
     image_files = []
     for i in range(1, screenshot_count + 1):
         log_message(f"正在進行第 {i} 次截圖...")
-        take_screenshot(i, target_hwnd)
-        image_files.append(os.path.join(save_directory, f"{file_prefix}{i:03d}.png"))
+        saved_path = take_screenshot(i, target_hwnd)
+        image_files.append(saved_path)
 
     log_message("截圖完成！")
 
